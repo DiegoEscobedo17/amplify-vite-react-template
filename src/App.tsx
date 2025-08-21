@@ -21,21 +21,29 @@ function App() {
   const [busqueda, setBusqueda] = useState("");
   const [carrito, setCarrito] = useState<CartItem[]>([]);
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO'|'TARJETA'|'TRANSFERENCIA'|'YAPE'|'PLIN'>("EFECTIVO");
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   useEffect(() => {
-    const sub = client.models.Productos.observeQuery({
+    const modelos: any = (client as any).models;
+    if (!modelos?.Productos) {
+      setErrorMsg('Backend no sincronizado con el nuevo esquema (model Productos no disponible). Despliega el backend y actualiza amplify_outputs.json.');
+      return;
+    }
+    const sub = modelos.Productos.observeQuery({
       selectionSet: ["id","nombre_pruducto","precio","stock","sedeId","createdAt","updatedAt"]
     }).subscribe({
-      next: (data) => setProductos([...data.items] as any)
+      next: (data: any) => setProductos([...data.items] as any),
+      error: (e: any) => setErrorMsg(e?.message || 'Error cargando productos')
     });
     return () => sub.unsubscribe();
   }, []);
 
   useEffect(() => {
-    // buscar primera caja en APERTURA
-    client.models.Caja.list({ filter: { estado: { eq: 'APERTURA' } }, limit: 1 }).then(res => {
-      setCajaAbierta(res.data[0] ?? null);
-    });
+    const modelos: any = (client as any).models;
+    if (!modelos?.Caja) return;
+    modelos.Caja.list({ filter: { estado: { eq: 'APERTURA' } }, limit: 1 })
+      .then((res: any) => setCajaAbierta(res.data?.[0] ?? null))
+      .catch((e: any) => setErrorMsg(e?.message || 'Error buscando caja'));
   }, []);
 
   const productosFiltrados = useMemo(() => {
@@ -69,6 +77,11 @@ function App() {
   async function cobrar() {
     if (!cajaAbierta) { alert('No hay caja en APERTURA'); return; }
     if (carrito.length === 0) { alert('Carrito vacío'); return; }
+    const mutaciones: any = (client as any).mutations;
+    if (!mutaciones?.crearPOSVentaConDetalles) {
+      alert('Mutación crearPOSVentaConDetalles no disponible. Despliega backend.');
+      return;
+    }
     const args = {
       cajaId: cajaAbierta.id!,
       usuarioVendedorUserId: user?.username || user?.userId || 'desconocido',
@@ -83,13 +96,17 @@ function App() {
         precio_unitario: i.precio_unitario,
       })),
     } as any;
-    const res = await client.mutations.crearPOSVentaConDetalles(args);
-    if ((res as any).data) {
-      const venta = (res as any).data as Schema["POSVenta"]["type"];
-      setCarrito([]);
-      alert(`Venta ${venta.numero_ticket} creada. Total S/. ${venta.total?.toFixed(2)}`);
-    } else {
-      alert('Error creando venta');
+    try {
+      const res = await mutaciones.crearPOSVentaConDetalles(args);
+      if ((res as any).data) {
+        const venta = (res as any).data as Schema["POSVenta"]["type"];
+        setCarrito([]);
+        alert(`Venta ${venta.numero_ticket} creada. Total S/. ${venta.total?.toFixed(2)}`);
+      } else {
+        alert('Error creando venta');
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Error creando venta');
     }
   }
 
@@ -103,7 +120,13 @@ function App() {
         </div>
       </header>
 
-      {!cajaAbierta && (
+      {errorMsg && (
+        <div style={{ background: '#fff2cc', padding: 8, margin: 8, borderRadius: 4, color: '#7a5b00' }}>
+          {errorMsg}
+        </div>
+      )}
+
+      {!errorMsg && !cajaAbierta && (
         <div style={{ background: '#d6ffd6', padding: 8, margin: 8, borderRadius: 4 }}>
           No hay una Caja en APERTURA. Ábrela en Data Manager.
         </div>
