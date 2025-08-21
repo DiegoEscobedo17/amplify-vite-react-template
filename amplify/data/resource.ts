@@ -1,14 +1,6 @@
 import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
 import { posService } from '../functions/pos-service/resource';
 
-// =============== Enums ===============
-const TipoProductoEnum = a.enum(['INSUMO', 'ABARROTE']);
-const POSMetodosPagoEnum = a.enum(['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'YAPE', 'PLIN']);
-const POSEstadoEnum = a.enum(['PENDIENTE', 'COMPLETADA', 'CANCELADA', 'DEVUELTA']);
-const CajaEstadoEnum = a.enum(['APERTURA', 'PAUSA', 'CERRADO']);
-const TipoItemEnum = a.enum(['PRODUCTO', 'SERVICIO']);
-const EstadoSunatEnum = a.enum(['PENDIENTE', 'ENVIADO', 'ACEPTADO', 'RECHAZADO', 'ANULADO']);
-
 // Nota dinero: usamos a.float(). Si necesitas precisión exacta, modela valores en centavos con a.integer().
 export const schema = a.schema({
 

@@ -24,11 +24,9 @@ function App() {
 
   useEffect(() => {
     const sub = client.models.Productos.observeQuery({
-      // get many
-      selectionSet: ["id","nombre_pruducto","precio","stock"],
-      limit: 1000
+      selectionSet: ["id","nombre_pruducto","precio","stock","sedeId","createdAt","updatedAt"]
     }).subscribe({
-      next: (data) => setProductos(data.items)
+      next: (data) => setProductos([...data.items] as any)
     });
     return () => sub.unsubscribe();
   }, []);
