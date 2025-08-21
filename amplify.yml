@@ -7,11 +7,11 @@ applications:
           commands:
             - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
             - npm ci --cache .npm --prefer-offline
-            - npx -y ampx@latest --version
         build:
           commands:
             - echo ">> Deploying backend (APP_ID=dwuwc1vsjv5i1 BRANCH=${AWS_BRANCH:-main})"
-            - npx ampx pipeline-deploy --app-id dwuwc1vsjv5i1 --branch "${AWS_BRANCH:-main}"
+            - npx -y @aws-amplify/cli@latest --version
+            - npx -y @aws-amplify/cli@latest sandbox --config-out-dir . --yes
             # validar outputs y duplicarlos a src para el build del FE
             - test -f amplify_outputs.json && echo ">> amplify_outputs.json OK" || (echo ">> amplify_outputs.json MISSING" && exit 1)
             - mkdir -p src && cp -f amplify_outputs.json src/amplify_outputs.json
