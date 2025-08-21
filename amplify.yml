@@ -1,42 +1,38 @@
 version: 1
-
-backend:
-  phases:
-    preBuild:
-      commands:
-        - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
-        - npm ci --cache .npm --prefer-offline
-    build:
-      commands:
-        # Usa AMPLIFY_APP_ID si existe; si no, cae a AWS_APP_ID (algunas cuentas la exponen así)
-        - APP_ID=${AMPLIFY_APP_ID:-$AWS_APP_ID}
-        # Usa AWS_BRANCH si existe; si no, asume main
-        - BRANCH=${AWS_BRANCH:-main}
-        - echo ">> Backend deploy using APP_ID=$APP_ID BRANCH=$BRANCH"
-        - npx ampx pipeline-deploy --branch "$BRANCH" --app-id "$APP_ID"
-        # Verifica que se haya generado amplify_outputs.json (fallar temprano si no)
-        - test -f amplify_outputs.json && echo ">> amplify_outputs.json present" || (echo ">> amplify_outputs.json MISSING" && exit 1)
-  cache:
-    paths:
-      - .npm/**/*
-      - node_modules/**/*
-
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
-        - npm ci --cache .npm --prefer-offline
-    build:
-      commands:
-        - echo ">> Listing files before build"; ls -la
-        - echo ">> amplify_outputs.json (first lines)"; head -n 20 amplify_outputs.json || true
-        - npm run build
-  artifacts:
-    baseDirectory: dist
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - .npm/**/*
-      - node_modules/**/*
+applications:
+  - appRoot: .
+    backend:
+      phases:
+        preBuild:
+          commands:
+            - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
+            - npm ci --cache .npm --prefer-offline
+            - npx -y ampx@latest --version
+        build:
+          commands:
+            - echo ">> Deploying backend with ampx (APP_ID=dwuwc1vsjv5i1 BRANCH=${AWS_BRANCH:-main})"
+            - npx ampx pipeline-deploy --app-id dwuwc1vsjv5i1 --branch "${AWS_BRANCH:-main}"
+            - test -f amplify_outputs.json && echo ">> amplify_outputs.json OK" || (echo ">> amplify_outputs.json MISSING" && exit 1)
+      cache:
+        paths:
+          - .npm/**/*
+          - node_modules/**/*
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
+            - npm ci --cache .npm --prefer-offline
+        build:
+          commands:
+            - echo ">> Listing root"; ls -la
+            - echo ">> Head amplify_outputs.json"; head -n 20 amplify_outputs.json || true
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .npm/**/*
+          - node_modules/**/*
