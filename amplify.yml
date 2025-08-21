@@ -4,13 +4,18 @@ backend:
   phases:
     preBuild:
       commands:
-        - nvm install 20
-        - nvm use 20
+        - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
         - npm ci --cache .npm --prefer-offline
     build:
       commands:
-        # Usa AMPLIFY_APP_ID (no AWS_APP_ID) para desplegar el backend Gen 2
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AMPLIFY_APP_ID
+        # Usa AMPLIFY_APP_ID si existe; si no, cae a AWS_APP_ID (algunas cuentas la exponen así)
+        - APP_ID=${AMPLIFY_APP_ID:-$AWS_APP_ID}
+        # Usa AWS_BRANCH si existe; si no, asume main
+        - BRANCH=${AWS_BRANCH:-main}
+        - echo ">> Backend deploy using APP_ID=$APP_ID BRANCH=$BRANCH"
+        - npx ampx pipeline-deploy --branch "$BRANCH" --app-id "$APP_ID"
+        # Verifica que se haya generado amplify_outputs.json (fallar temprano si no)
+        - test -f amplify_outputs.json && echo ">> amplify_outputs.json present" || (echo ">> amplify_outputs.json MISSING" && exit 1)
   cache:
     paths:
       - .npm/**/*
@@ -20,11 +25,12 @@ frontend:
   phases:
     preBuild:
       commands:
-        - nvm install 20
-        - nvm use 20
+        - if command -v nvm >/dev/null 2>&1; then nvm install 20 && nvm use 20; fi
         - npm ci --cache .npm --prefer-offline
     build:
       commands:
+        - echo ">> Listing files before build"; ls -la
+        - echo ">> amplify_outputs.json (first lines)"; head -n 20 amplify_outputs.json || true
         - npm run build
   artifacts:
     baseDirectory: dist
