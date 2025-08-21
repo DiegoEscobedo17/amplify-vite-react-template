@@ -10,9 +10,11 @@ applications:
             - npx -y ampx@latest --version
         build:
           commands:
-            - echo ">> Deploying backend with ampx (APP_ID=dwuwc1vsjv5i1 BRANCH=${AWS_BRANCH:-main})"
+            - echo ">> Deploying backend (APP_ID=dwuwc1vsjv5i1 BRANCH=${AWS_BRANCH:-main})"
             - npx ampx pipeline-deploy --app-id dwuwc1vsjv5i1 --branch "${AWS_BRANCH:-main}"
+            # validar outputs y duplicarlos a src para el build del FE
             - test -f amplify_outputs.json && echo ">> amplify_outputs.json OK" || (echo ">> amplify_outputs.json MISSING" && exit 1)
+            - mkdir -p src && cp -f amplify_outputs.json src/amplify_outputs.json
       cache:
         paths:
           - .npm/**/*
@@ -25,8 +27,10 @@ applications:
             - npm ci --cache .npm --prefer-offline
         build:
           commands:
-            - echo ">> Listing root"; ls -la
-            - echo ">> Head amplify_outputs.json"; head -n 20 amplify_outputs.json || true
+            - echo ">> ls root"; ls -la
+            - echo ">> head amplify_outputs.json"; head -n 20 amplify_outputs.json || true
+            - echo ">> ls src"; ls -la src
+            - echo ">> head src/amplify_outputs.json"; head -n 20 src/amplify_outputs.json || true
             - npm run build
       artifacts:
         baseDirectory: dist
@@ -36,3 +40,4 @@ applications:
         paths:
           - .npm/**/*
           - node_modules/**/*
+    persistArtifacts: true
