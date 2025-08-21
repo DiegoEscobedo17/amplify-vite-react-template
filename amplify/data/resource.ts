@@ -79,7 +79,7 @@ export const schema = a.schema({
 
   POSVentaDetalle: a.model({
     ventaId: a.id().required(),
-    tipo_item: a.ref('TipoItemEnum').required(), // PRODUCTO | SERVICIO
+    tipo_item: a.string().required(), // PRODUCTO | SERVICIO
     productoId: a.id(), // null si es SERVICIO
     descripcion: a.string().required(),
     cantidad: a.integer().default(1),
