@@ -1,0 +1,48 @@
+import { generateClient } from 'aws-amplify/data';
+const client = generateClient({ authMode: 'userPool' });
+export const handler = async (event) => {
+    try {
+        switch (event.info.fieldName) {
+            case 'anularPOSVenta':
+                return await anularPOSVenta(event.arguments);
+            default:
+                throw new Error(`Unknown field ${event.info.fieldName}`);
+        }
+    }
+    catch (err) {
+        console.error('Error in pos-void-sale handler', err);
+        throw new Error(err?.message || 'Unhandled error in pos-void-sale');
+    }
+};
+async function anularPOSVenta(args) {
+    const { ventaId, motivo = 'Anulación solicitada' } = args;
+    // Cargar venta y sus detalles
+    const venta = await client.models.POSVenta.get({ id: ventaId });
+    if (!venta?.data)
+        throw new Error('Venta no encontrada');
+    const detalles = await client.models.POSVentaDetalle.list({
+        filter: { ventaId: { eq: ventaId } },
+        limit: 1000
+    });
+    // Reponer stock para cada detalle de tipo PRODUCTO
+    for (const d of detalles.data) {
+        if (d.tipo_item === 'PRODUCTO' && d.productoId) {
+            const prod = await client.models.Productos.get({ id: d.productoId });
+            if (prod?.data) {
+                await client.models.Productos.update({
+                    id: prod.data.id,
+                    stock: (prod.data.stock || 0) + (d.cantidad || 0),
+                });
+            }
+        }
+    }
+    // Actualizar venta a estado CANCELADA
+    const updated = await client.models.POSVenta.update({
+        id: venta.data.id,
+        estado: 'CANCELADA',
+        fecha_modificacion: new Date().toISOString(),
+        observaciones: motivo,
+    });
+    return updated.data;
+}
+export default handler;

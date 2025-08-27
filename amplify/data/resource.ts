@@ -168,7 +168,7 @@ export const schema = a.schema({
 
     // Detalles
     detalles: a.hasMany('DetalleComprobanteElectronico', 'comprobanteId'),
-  }).identifier(['serie', 'numero']),
+  }),
 
   DetalleComprobanteElectronico: a.model({
     comprobanteId: a.id().required(),
