@@ -74,6 +74,8 @@ export const schema = a.schema({
         subtotal: a.float().required(),
         venta: a.belongsTo('POSVenta', 'ventaId'),
         producto: a.belongsTo('Productos', 'productoId'),
+        // Relación recíproca para DetalleComprobanteElectronico.detalle_pos
+        detalles_comprobante: a.hasMany('DetalleComprobanteElectronico', 'detalle_posId'),
     }),
     // ============== SUNAT ==============
     ConfiguracionSUNAT: a.model({
@@ -137,6 +139,8 @@ export const schema = a.schema({
         observaciones: a.string(),
         // Detalles
         detalles: a.hasMany('DetalleComprobanteElectronico', 'comprobanteId'),
+        // Relación recíproca para SUNATEnvioQueue.comprobante
+        envios_queue: a.hasMany('SUNATEnvioQueue', 'comprobanteId'),
     }),
     DetalleComprobanteElectronico: a.model({
         comprobanteId: a.id().required(),
