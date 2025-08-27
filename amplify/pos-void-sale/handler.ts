@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../data/resource';
+import type { Schema } from '../data/resource';
 
 type AppSyncResolverEvent = {
   arguments: any;
@@ -41,7 +41,6 @@ async function anularPOSVenta(args: any) {
       if (prod?.data) {
         await client.models.Productos.update({
           id: prod.data.id,
-          _version: prod.data._version,
           stock: (prod.data.stock || 0) + (d.cantidad || 0),
         });
       }
@@ -51,7 +50,6 @@ async function anularPOSVenta(args: any) {
   // Actualizar venta a estado CANCELADA
   const updated = await client.models.POSVenta.update({
     id: venta.data.id,
-    _version: venta.data._version,
     estado: 'CANCELADA',
     fecha_modificacion: new Date().toISOString(),
     observaciones: motivo,

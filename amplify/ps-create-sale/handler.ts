@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../data/resource';
+import type { Schema } from '../data/resource';
 
 type AppSyncResolverEvent = {
   arguments: any;
@@ -102,7 +102,6 @@ async function crearPOSVentaConDetalles(args: any) {
       if (prod?.data) {
         await client.models.Productos.update({
           id: prod.data.id,
-          _version: prod.data._version,
           stock: (prod.data.stock || 0) - item.cantidad,
         });
       }

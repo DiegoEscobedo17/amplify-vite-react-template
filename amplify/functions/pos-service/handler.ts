@@ -93,7 +93,6 @@ async function crearPOSVentaConDetalles(args: any) {
 			if (prod?.data) {
 				await client.models.Productos.update({
 					id: prod.data.id,
-					_version: prod.data._version,
 					stock: (prod.data.stock || 0) - item.cantidad,
 				});
 			}
@@ -115,7 +114,6 @@ async function anularPOSVenta(args: any) {
 			if (prod?.data) {
 				await client.models.Productos.update({
 					id: prod.data.id,
-					_version: prod.data._version,
 					stock: (prod.data.stock || 0) + (d.cantidad || 0),
 				});
 			}
@@ -123,7 +121,6 @@ async function anularPOSVenta(args: any) {
 	}
 	const updated = await client.models.POSVenta.update({
 		id: venta.data.id,
-		_version: venta.data._version,
 		estado: 'CANCELADA',
 		fecha_modificacion: new Date().toISOString(),
 	});
@@ -147,11 +144,11 @@ async function emitirComprobante(args: any) {
 	if (tipo_comprobante === '01') {
 		serie = conf.serie_factura || 'F001';
 		numero = (conf.ultimo_numero_factura || 0) + 1;
-		await client.models.ConfiguracionSUNAT.update({ id: conf.id, _version: conf._version, ultimo_numero_factura: numero });
+		await client.models.ConfiguracionSUNAT.update({ sedeId: conf.sedeId, ultimo_numero_factura: numero });
 	} else if (tipo_comprobante === '03') {
 		serie = conf.serie_boleta || 'B001';
 		numero = (conf.ultimo_numero_boleta || 0) + 1;
-		await client.models.ConfiguracionSUNAT.update({ id: conf.id, _version: conf._version, ultimo_numero_boleta: numero });
+		await client.models.ConfiguracionSUNAT.update({ sedeId: conf.sedeId, ultimo_numero_boleta: numero });
 	} else {
 		// permitir stub para otros tipos
 		serie = conf.serie_boleta || 'B001';
