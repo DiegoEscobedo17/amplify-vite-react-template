@@ -1,0 +1,21 @@
+.ventas-page { padding: 1.5rem; }
+.ventas-filtros { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; align-items: end; margin-bottom: 1rem; }
+.ventas-filtros .filtro { display: grid; gap: 0.5rem; }
+.ventas-filtros input, .ventas-filtros select { padding: 0.6rem 0.75rem; border: 1px solid #bdc3c7; border-radius: 6px; }
+
+.ventas-table-wrap { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+.ventas-table { width: 100%; border-collapse: collapse; }
+.ventas-table th, .ventas-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #ecf0f1; text-align: left; }
+.ventas-table thead th { background: #f8f9fb; font-weight: 700; color: #2c3e50; }
+
+.pill { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+.pill-green { background: #eaf7f0; color: #27ae60; }
+.pill-red { background: #ffecec; color: #e74c3c; }
+
+.acciones { display: flex; gap: 0.5rem; }
+
+@media (max-width: 1024px) {
+  .ventas-filtros { grid-template-columns: 1fr 1fr; }
+}
+
+

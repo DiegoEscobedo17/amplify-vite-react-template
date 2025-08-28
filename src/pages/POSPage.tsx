@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuth } from '../context/AuthContext';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { ProductList, Cart, SearchBar } from '../components/pos';
@@ -16,7 +16,7 @@ type CartItem = {
 };
 
 export const POSPage: React.FC = () => {
-  const { user, signOut } = useAuthenticator();
+  const { user } = useAuth();
   const [products, setProducts] = useState<Array<Schema["Productos"]["type"]>>([]);
   const [cajaAbierta, setCajaAbierta] = useState<Schema["Caja"]["type"] | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,7 +103,7 @@ export const POSPage: React.FC = () => {
 
     const args = {
       cajaId: cajaAbierta.id!,
-      usuarioVendedorUserId: user?.username || user?.userId || 'desconocido',
+      usuarioVendedorUserId: user?.email || 'desconocido',
       metodo_pago: metodoPago,
       descuento: 0,
       observaciones: "",
@@ -140,13 +140,7 @@ export const POSPage: React.FC = () => {
 
   return (
     <div className="pos-page">
-      <header className="pos-header">
-        <div className="header-title">Sistema POS</div>
-        <div className="header-user">
-          <span>{user?.username}</span>
-          <button onClick={signOut} className="signout-btn">Salir</button>
-        </div>
-      </header>
+      {/* Header y navbar ahora están en Layout de App */}
 
       {!cajaAbierta && (
         <div className="caja-warning">

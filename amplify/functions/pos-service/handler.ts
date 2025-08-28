@@ -7,7 +7,7 @@ type AppSyncResolverEvent = {
 	info: { fieldName: string };
 };
 
-const client = generateClient<Schema>({ authMode: 'userPool' });
+const client = generateClient<Schema>({ authMode: 'apiKey' });
 
 function zfill(num: number, width: number): string {
 	const str = String(num);
@@ -23,6 +23,16 @@ export const handler = async (event: AppSyncResolverEvent) => {
 				return await anularPOSVenta(event.arguments);
 			case 'emitirComprobante':
 				return await emitirComprobante(event.arguments);
+			case 'abrirCaja':
+				return await abrirCaja(event.arguments);
+			case 'cerrarCaja':
+				return await cerrarCaja(event.arguments);
+			case 'upsertUserProfile':
+				return await upsertUserProfile(event.arguments);
+			case 'registerUser':
+				return await registerUser(event.arguments);
+			case 'loginUser':
+				return await loginUser(event.arguments);
 			default:
 				throw new Error(`Unknown field ${event.info.fieldName}`);
 		}
@@ -31,6 +41,48 @@ export const handler = async (event: AppSyncResolverEvent) => {
 		throw new Error(err?.message || 'Unhandled error');
 	}
 };
+
+async function abrirCaja(args: any) {
+	const { cajaId, usuarioId, monto_inicial = 0, observaciones = '' } = args;
+	const caja = await client.models.Caja.get({ id: cajaId });
+	if (!caja?.data) throw new Error('Caja no encontrada');
+	if (caja.data.estado === 'APERTURA') return caja.data;
+	await client.models.CajaRegistro.create({
+		cajaId,
+		usuario_responsable_userId: usuarioId,
+		tipo_operacion: 'APERTURA',
+		monto_inicial,
+		observaciones,
+		fecha_hora: new Date().toISOString(),
+	});
+	const updated = await client.models.Caja.update({
+		id: cajaId,
+		estado: 'APERTURA',
+		fecha_apertura: new Date().toISOString(),
+		ingresos_apertura: monto_inicial,
+	});
+	return updated.data;
+}
+
+async function cerrarCaja(args: any) {
+	const { cajaId, usuarioId, observaciones = '' } = args;
+	const caja = await client.models.Caja.get({ id: cajaId });
+	if (!caja?.data) throw new Error('Caja no encontrada');
+	if (caja.data.estado !== 'APERTURA') throw new Error('Caja no está en APERTURA');
+	await client.models.CajaRegistro.create({
+		cajaId,
+		usuario_responsable_userId: usuarioId,
+		tipo_operacion: 'CIERRE',
+		observaciones,
+		fecha_hora: new Date().toISOString(),
+	});
+	const updated = await client.models.Caja.update({
+		id: cajaId,
+		estado: 'CIERRE',
+		fecha_cierre: new Date().toISOString(),
+	});
+	return updated.data;
+}
 
 async function crearPOSVentaConDetalles(args: any) {
 	const { cajaId, usuarioVendedorUserId, metodo_pago, descuento = 0, observaciones = '', items } = args;
@@ -178,6 +230,50 @@ async function emitirComprobante(args: any) {
 		venta_posId: venta.data.id,
 	});
 	return ce.data;
+}
+
+async function upsertUserProfile(args: any) {
+	const { sub, email, displayName } = args;
+	if (!sub || !email) throw new Error('sub y email son requeridos');
+	// Buscar por sub
+	const existing = await client.models.User.list({ filter: { sub: { eq: sub } }, limit: 1 });
+	const item = existing.data[0];
+	if (item) {
+		const updated = await client.models.User.update({ id: item.id, email, displayName });
+		return updated.data;
+	}
+	const created = await client.models.User.create({ sub, email, displayName });
+	return created.data;
+}
+
+function hashPassword(password: string, salt: string) {
+    // NO CRIPTO FUERTE: placeholder. Para prod usar bcrypt/scrypt/argon2 en Lambda Layer.
+    const data = password + '|' + salt;
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) hash = (hash * 31 + data.charCodeAt(i)) >>> 0;
+    return String(hash);
+}
+
+async function registerUser(args: any) {
+    const { email, password, displayName } = args;
+    if (!email || !password) throw new Error('email y password requeridos');
+    const existing = await client.models.User.list({ filter: { email: { eq: email } }, limit: 1 });
+    if (existing.data[0]) throw new Error('Email ya registrado');
+    const salt = String(Date.now());
+    const password_hash = hashPassword(password, salt);
+    const created = await client.models.User.create({ email, displayName, password_hash, password_salt: salt, role: 'USER' });
+    return created.data;
+}
+
+async function loginUser(args: any) {
+    const { email, password } = args;
+    if (!email || !password) throw new Error('email y password requeridos');
+    const existing = await client.models.User.list({ filter: { email: { eq: email } }, limit: 1 });
+    const user = existing.data[0];
+    if (!user) throw new Error('Credenciales inválidas');
+    const computed = hashPassword(password, user.password_salt || '');
+    if (computed !== user.password_hash) throw new Error('Credenciales inválidas');
+    return user; // en prod emitir JWT propio o usar Amplify Auth
 }
 
 export default handler;

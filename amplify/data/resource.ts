@@ -4,6 +4,18 @@ import { posService } from '../functions/pos-service/resource';
 // Nota dinero: usamos a.float(). Si necesitas precisión exacta, modela valores en centavos con a.integer().
 export const schema = a.schema({
 
+  // ============== Usuarios (perfil) ==============
+  User: a.model({
+    sub: a.string(),
+    email: a.email().required(),
+    displayName: a.string(),
+    role: a.enum(['ADMIN','USER']),
+    password_hash: a.string(),
+    password_salt: a.string(),
+  }).authorization((allow) => [
+    allow.guest().to(['create','read','update']),
+  ]),
+
   // ============== Organización ==============
   Sede: a.model({
     nombre: a.string().required(),
@@ -27,7 +39,10 @@ export const schema = a.schema({
     sede: a.belongsTo('Sede', 'sedeId'),
 
     posDetalles: a.hasMany('POSVentaDetalle', 'productoId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]),
 
   // ============== POS ==============
   Caja: a.model({
@@ -42,7 +57,10 @@ export const schema = a.schema({
 
     registros: a.hasMany('CajaRegistro', 'cajaId'),
     ventas_pos: a.hasMany('POSVenta', 'cajaId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]),
 
   CajaRegistro: a.model({
     cajaId: a.id().required(),
@@ -54,7 +72,10 @@ export const schema = a.schema({
     fecha_hora: a.datetime(),
 
     caja: a.belongsTo('Caja', 'cajaId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]),
 
   POSVenta: a.model({
     numero_ticket: a.string().required(),  // generarlo en Function (zfill 8)
@@ -75,7 +96,10 @@ export const schema = a.schema({
     caja: a.belongsTo('Caja', 'cajaId'),
     detalles: a.hasMany('POSVentaDetalle', 'ventaId'),
     comprobantes_electronicos: a.hasMany('ComprobanteElectronico', 'venta_posId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['create','update','read']),
+  ]),
 
   POSVentaDetalle: a.model({
     ventaId: a.id().required(),
@@ -90,7 +114,10 @@ export const schema = a.schema({
     producto: a.belongsTo('Productos', 'productoId'),
     // Relación recíproca para DetalleComprobanteElectronico.detalle_pos
     detalles_comprobante: a.hasMany('DetalleComprobanteElectronico', 'detalle_posId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['create','update','read']),
+  ]),
 
   // ============== SUNAT ==============
   ConfiguracionSUNAT: a.model({
@@ -121,7 +148,10 @@ export const schema = a.schema({
     fecha_modificacion: a.datetime(),
 
     sede: a.belongsTo('Sede', 'sedeId'),
-  }).identifier(['sedeId']), // 1-1 por sede
+  }).identifier(['sedeId']).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]), // 1-1 por sede
 
   ComprobanteElectronico: a.model({
     // '01','03','07','08' -> valida en Function/UI
@@ -172,7 +202,10 @@ export const schema = a.schema({
     detalles: a.hasMany('DetalleComprobanteElectronico', 'comprobanteId'),
     // Relación recíproca para SUNATEnvioQueue.comprobante
     envios_queue: a.hasMany('SUNATEnvioQueue', 'comprobanteId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]),
 
   DetalleComprobanteElectronico: a.model({
     comprobanteId: a.id().required(),
@@ -189,7 +222,10 @@ export const schema = a.schema({
     detalle_pos: a.belongsTo('POSVentaDetalle', 'detalle_posId'),
 
     comprobante: a.belongsTo('ComprobanteElectronico', 'comprobanteId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]),
 
   SUNATEnvioQueue: a.model({
     comprobanteId: a.id(), // puede ser null si se encola antes de persistir CE
@@ -213,7 +249,10 @@ export const schema = a.schema({
     last_response_snippet: a.string(),
 
     comprobante: a.belongsTo('ComprobanteElectronico', 'comprobanteId'),
-  }),
+  }).authorization((allow) => [
+    allow.group('admin').to(['create','update','delete','read']),
+    allow.authenticated().to(['read']),
+  ]),
 
   // ============== Mutations (Functions) ==============
   crearPOSVentaConDetalles: a.mutation()
@@ -226,6 +265,53 @@ export const schema = a.schema({
       items: a.json().required(),
     })
     .returns(a.ref('POSVenta'))
+    .handler(a.handler.function(posService)),
+
+  abrirCaja: a.mutation()
+    .arguments({
+      cajaId: a.id().required(),
+      usuarioId: a.string().required(),
+      monto_inicial: a.float(),
+      observaciones: a.string(),
+    })
+    .returns(a.ref('Caja'))
+    .authorization((allow) => [allow.group('admin')])
+    .handler(a.handler.function(posService)),
+
+  cerrarCaja: a.mutation()
+    .arguments({
+      cajaId: a.id().required(),
+      usuarioId: a.string().required(),
+      observaciones: a.string(),
+    })
+    .returns(a.ref('Caja'))
+    .authorization((allow) => [allow.group('admin')])
+    .handler(a.handler.function(posService)),
+
+  upsertUserProfile: a.mutation()
+    .arguments({
+      sub: a.string().required(),
+      email: a.string().required(),
+      displayName: a.string(),
+    })
+    .returns(a.ref('User'))
+    .handler(a.handler.function(posService)),
+
+  registerUser: a.mutation()
+    .arguments({
+      email: a.string().required(),
+      password: a.string().required(),
+      displayName: a.string(),
+    })
+    .returns(a.ref('User'))
+    .handler(a.handler.function(posService)),
+
+  loginUser: a.mutation()
+    .arguments({
+      email: a.string().required(),
+      password: a.string().required(),
+    })
+    .returns(a.ref('User'))
     .handler(a.handler.function(posService)),
 
   anularPOSVenta: a.mutation()
@@ -249,7 +335,7 @@ export const schema = a.schema({
     .handler(a.handler.function(posService)),
 
 })
-.authorization((allow) => [allow.authenticated()]);
+.authorization((allow) => [allow.guest(), allow.authenticated()]);
 
 export type Schema = ClientSchema<typeof schema>;
 

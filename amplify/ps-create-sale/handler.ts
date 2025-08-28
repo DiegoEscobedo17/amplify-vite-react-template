@@ -6,7 +6,7 @@ type AppSyncResolverEvent = {
   info: { fieldName: string };
 };
 
-const client = generateClient<Schema>({ authMode: 'userPool' });
+const client = generateClient<Schema>({ authMode: 'apiKey' });
 
 function zfill(num: number, width: number): string {
   const str = String(num);

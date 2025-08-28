@@ -6,7 +6,7 @@ type AppSyncResolverEvent = {
   info: { fieldName: string };
 };
 
-const client = generateClient<Schema>({ authMode: 'userPool' });
+const client = generateClient<Schema>({ authMode: 'apiKey' });
 
 export const handler = async (event: AppSyncResolverEvent) => {
   try {
